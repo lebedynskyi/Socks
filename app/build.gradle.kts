@@ -1,0 +1,23 @@
+plugins {
+    id("java-library")
+    id("kotlin")
+    id("org.jlleitschuh.gradle.ktlint") version "11.6.1"
+}
+
+version = "0.1.5"
+
+tasks.jar {
+    manifest {
+        attributes(
+            mapOf(
+                "Implementation-Title" to project.name,
+                "Implementation-Version" to project.version
+            )
+        )
+    }
+}
+
+dependencies {
+    implementation(kotlin("stdlib"))
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+}
