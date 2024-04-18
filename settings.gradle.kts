@@ -1,3 +1,3 @@
-rootProject.name = "Sock"
+rootProject.name = "Socks"
 
 include("app")

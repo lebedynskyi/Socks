@@ -1,6 +1,7 @@
 package vetalll.server.sock
 
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -10,7 +11,7 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.util.concurrent.TimeUnit
 
-internal class SelectorThread<T : SockClient>(
+class SelectorThread<T : SockClient>(
     private val hostName: String,
     private val port: Int,
     private val clientFactory: SockClientFactory<T>,
@@ -18,6 +19,10 @@ internal class SelectorThread<T : SockClient>(
     private val clientReconnectDelay: Long = 10000,
     private val TAG: String = "SockSelector"
 ) : Thread() {
+    val connectionAcceptFlow get() = _selectionAcceptFlow.asSharedFlow()
+    val connectionReadFlow get() = _selectionReadFlow.asSharedFlow()
+    val connectionCloseFlow get() = _selectionCloseFlow.asSharedFlow()
+
     private val _selectionAcceptFlow = MutableSharedFlow<T>(1)
     private val _selectionCloseFlow = MutableSharedFlow<T>(1)
     private val _selectionReadFlow = MutableSharedFlow<Pair<T, ReadablePacket>>(1)
