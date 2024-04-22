@@ -44,7 +44,6 @@ class SelectorThread<T : SockClient>(
         isRunning = true
         name = TAG
         start()
-        join()
     }
 
     fun stopSelector() {
