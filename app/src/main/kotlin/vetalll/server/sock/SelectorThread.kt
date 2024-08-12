@@ -11,6 +11,10 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.util.concurrent.TimeUnit
 
+
+private const val READ_BUFFER_SIZE = 64 * 1024
+private const val WRITE_BUFFER_SIZE = 64 * 1024
+
 class SelectorThread<T : SockClient>(
     private val hostName: String,
     private val port: Int,
@@ -27,9 +31,6 @@ class SelectorThread<T : SockClient>(
     private val _selectionCloseFlow = MutableSharedFlow<T>(1)
     private val _selectionReadFlow = MutableSharedFlow<Pair<T, ReadablePacket>>(1)
 
-    private val READ_BUFFER_SIZE = 64 * 1024
-    private val WRITE_BUFFER_SIZE = 64 * 1024
-
     private val tempWriteBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN)
     private val writeBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN)
     private val readBuffer = ByteBuffer.allocate(READ_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN)
@@ -44,7 +45,6 @@ class SelectorThread<T : SockClient>(
         isRunning = true
         name = TAG
         start()
-        join()
     }
 
     fun stopSelector() {
@@ -103,8 +103,13 @@ class SelectorThread<T : SockClient>(
         while (isRunning) {
             val readyKeys = selector.select()
             val selectedKeys = selector.selectedKeys()
-            if (readyKeys == 0 && selectedKeys.isEmpty()) {
+            if (readyKeys <= 0) {
                 writeError(TAG, "Something wrong... Selector woke up without ready keys")
+                continue
+            }
+
+            if (selectedKeys.isEmpty()) {
+                writeError(TAG, "Something wrong... Selector woke up without selectedKeys")
                 continue
             }
 
@@ -114,18 +119,18 @@ class SelectorThread<T : SockClient>(
                 when (key.readyOps()) {
                     SelectionKey.OP_CONNECT -> finishOutcomeConnection(key)
                     SelectionKey.OP_ACCEPT -> acceptIncomeConnection(key)
-                    SelectionKey.OP_READ -> readPackets(key)
-                    SelectionKey.OP_WRITE -> writePackets(key)
                     SelectionKey.OP_READ or SelectionKey.OP_WRITE -> {
                         writePackets(key)
                         if (key.isValid) {
                             readPackets(key)
                         }
                     }
+                    SelectionKey.OP_READ -> readPackets(key)
+                    SelectionKey.OP_WRITE -> writePackets(key)
                 }
-
-                keyIterator.remove()
             }
+
+            selectedKeys.clear()
         }
     }
 
@@ -156,7 +161,7 @@ class SelectorThread<T : SockClient>(
             writeError(
                 TAG,
                 "Unable to connect to server $hostName:$port. Try again in ${
-                TimeUnit.MILLISECONDS.toSeconds(clientReconnectDelay)
+                    TimeUnit.MILLISECONDS.toSeconds(clientReconnectDelay)
                 } second"
             )
             sleep(clientReconnectDelay)

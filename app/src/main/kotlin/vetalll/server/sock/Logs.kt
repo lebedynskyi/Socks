@@ -14,11 +14,11 @@ internal fun writeDebug(tag: String, msg: Any) {
     println("$ANSI_RESET D: $tag: $ANSI_RESET$msg")
 }
 
-fun writeInfo(tag: String, msg: Any) {
+internal fun writeInfo(tag: String, msg: Any) {
     println("$ANSI_BLUE I: $tag: $ANSI_RESET$msg")
 }
 
-fun writeError(tag: String, msg: Any, e: Throwable) {
+internal fun writeError(tag: String, msg: Any, e: Throwable) {
     System.err.println("$ANSI_RED E: $tag: $ANSI_RESET$msg")
     e.printStackTrace()
 }
