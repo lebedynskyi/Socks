@@ -28,6 +28,10 @@ open class SockConnection(
     fun hasNextPacket(): Boolean = readPacketsQueue.size > 0
 
     fun sendPacket(packet: WriteablePacket) {
+        if (pendingClose) {
+            return
+        }
+
         if (selectionKey.isValid) {
             sendPacketsQueue.add(packet)
             selectionKey.interestOps(selectionKey.interestOps() or SelectionKey.OP_WRITE)
@@ -40,10 +44,14 @@ open class SockConnection(
     internal fun askClose(lastPacket: WriteablePacket? = null) {
         sendPacketsQueue.clear()
         readPacketsQueue.clear()
-        pendingClose = true
+
         if (lastPacket != null) {
             sendPacket(lastPacket)
+        } else {
+            closeSocket()
         }
+
+        pendingClose = true
     }
 
     fun readPackets(byteBuffer: ByteBuffer, stringBuffer: StringBuffer): Boolean {
@@ -137,8 +145,8 @@ open class SockConnection(
         buffer.position(dataStartPosition + encryptedSize)
     }
 
-    private fun readData(writeBuffer: ByteBuffer): Int {
-        return socket.read(writeBuffer)
+    private fun readData(readBuffer: ByteBuffer): Int {
+        return socket.read(readBuffer)
     }
 
     private fun writeData(writeBuffer: ByteBuffer): Int {
