@@ -94,6 +94,7 @@ open class SockConnection(
 
     internal fun closeSocket() {
         try {
+            // TODO Is it correct order?
             selectionKey.cancel()
             socket.close()
         } catch (e: Exception) {
@@ -107,6 +108,7 @@ open class SockConnection(
             val packetSize = packetHeader - headerSize
             val nextPacketPosition = buffer.position() + packetSize
 
+            // TODO loop cycle couple of packets in same key?
             val decryptedSize = crypt.decrypt(buffer.array(), buffer.position(), packetSize)
             if (decryptedSize > 0) {
                 val opCode = buffer.get()

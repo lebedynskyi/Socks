@@ -41,7 +41,11 @@ class SelectorThread<T : SockClient>(
     private lateinit var selector: Selector
 
     fun startSelector() {
-        writeInfo(TAG, "Starting selector")
+        if (isServer) {
+            writeInfo(TAG, "Starting selector in SERVER mode")
+        } else {
+            writeInfo(TAG, "Starting selector in CLIENT mode")
+        }
         isRunning = true
         name = TAG
         start()
@@ -104,12 +108,12 @@ class SelectorThread<T : SockClient>(
             val readyKeys = selector.select()
             val selectedKeys = selector.selectedKeys()
             if (readyKeys <= 0) {
-                writeError(TAG, "Something wrong... Selector woke up without ready keys")
+//                writeError(TAG, "Something wrong... Selector woke up without ready keys")
                 continue
             }
 
             if (selectedKeys.isEmpty()) {
-                writeError(TAG, "Something wrong... Selector woke up without selectedKeys")
+//                writeError(TAG, "Something wrong... Selector woke up without selectedKeys")
                 continue
             }
 

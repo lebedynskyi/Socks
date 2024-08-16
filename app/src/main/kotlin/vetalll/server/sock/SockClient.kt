@@ -10,6 +10,7 @@ open class SockClient(
         connection.sendPacket(packet)
     }
 
+    // TODO seems it does not work without packet
     open fun saveAndClose(reason: WriteablePacket? = null) {
         connection.pendingClose = true
         connection.askClose(reason)
