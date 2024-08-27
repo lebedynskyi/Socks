@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 private const val READ_BUFFER_SIZE = 64 * 1024
 private const val WRITE_BUFFER_SIZE = 64 * 1024
 
+@Deprecated("Need to introduce a second variable for Packet")
 class SelectorThread<T : SockClient>(
     private val hostName: String,
     private val port: Int,
@@ -156,7 +157,7 @@ class SelectorThread<T : SockClient>(
             // key might have been invalidated on finishConnect()
             if (key.isValid) {
                 key.interestOps(key.interestOps() and SelectionKey.OP_CONNECT.inv())
-                writeDebug(TAG, "Connected to $hostName:$port")
+                writeInfo(TAG, "Connected to $hostName:$port")
                 clientFactory.createClient(selector, socket)
                 val client = key.attachment() as T
                 _selectionAcceptFlow.tryEmit(client)
