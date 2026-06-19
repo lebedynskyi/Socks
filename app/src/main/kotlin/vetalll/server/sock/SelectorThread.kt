@@ -15,22 +15,21 @@ import java.util.concurrent.TimeUnit
 private const val READ_BUFFER_SIZE = 64 * 1024
 private const val WRITE_BUFFER_SIZE = 64 * 1024
 
-@Deprecated("Need to introduce a second variable for Packet")
 class SelectorThread<T : SockClient>(
     private val hostName: String,
     private val port: Int,
     private val clientFactory: SockClientFactory<T>,
     private val isServer: Boolean,
     private val clientReconnectDelay: Long = 10000,
-    private val TAG: String = "SockSelector"
+    private val tag: String = "SelectorThread"
 ) : Thread() {
     val connectionAcceptFlow get() = _selectionAcceptFlow.asSharedFlow()
     val connectionReadFlow get() = _selectionReadFlow.asSharedFlow()
     val connectionCloseFlow get() = _selectionCloseFlow.asSharedFlow()
 
     private val _selectionAcceptFlow = MutableSharedFlow<T>(1)
-    private val _selectionCloseFlow = MutableSharedFlow<T>(1)
     private val _selectionReadFlow = MutableSharedFlow<Pair<T, ReadablePacket>>(1)
+    private val _selectionCloseFlow = MutableSharedFlow<T>(1)
 
     private val tempWriteBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN)
     private val writeBuffer = ByteBuffer.allocate(WRITE_BUFFER_SIZE).order(ByteOrder.LITTLE_ENDIAN)
@@ -43,17 +42,17 @@ class SelectorThread<T : SockClient>(
 
     fun startSelector() {
         if (isServer) {
-            writeInfo(TAG, "Starting selector in SERVER mode")
+            writeInfo(tag, "Starting selector in SERVER mode")
         } else {
-            writeInfo(TAG, "Starting selector in CLIENT mode")
+            writeInfo(tag, "Starting selector in CLIENT mode")
         }
         isRunning = true
-        name = TAG
+        name = tag
         start()
     }
 
     fun stopSelector() {
-        writeInfo(TAG, "Stopping selector")
+        writeInfo(tag, "Stopping selector")
         isRunning = false
         selector.wakeup()
     }
@@ -86,7 +85,7 @@ class SelectorThread<T : SockClient>(
             configureBlocking(false)
             register(selector, SelectionKey.OP_ACCEPT)
         }
-        writeInfo(TAG, "Server started. Listening clients on $hostName:$port")
+        writeInfo(tag, "Server started. Listening clients on $hostName:$port")
     }
 
     private fun startClient() {
@@ -101,7 +100,7 @@ class SelectorThread<T : SockClient>(
             connect(address)
             register(selector, SelectionKey.OP_CONNECT)
         }
-        writeInfo(TAG, "Client started. Connecting to server $hostName:$port")
+        writeInfo(tag, "Client started. Connecting to server $hostName:$port")
     }
 
     private fun loopSelector() {
@@ -144,7 +143,7 @@ class SelectorThread<T : SockClient>(
         val serverSocket = key.channel() as ServerSocketChannel
         val socket = serverSocket.accept().apply { configureBlocking(false) }
         val client = clientFactory.createClient(selector, socket)
-        writeInfo(TAG, "New connection $client")
+        writeInfo(tag, "New connection $client")
         _selectionAcceptFlow.tryEmit(client)
     }
 
@@ -157,14 +156,14 @@ class SelectorThread<T : SockClient>(
             // key might have been invalidated on finishConnect()
             if (key.isValid) {
                 key.interestOps(key.interestOps() and SelectionKey.OP_CONNECT.inv())
-                writeInfo(TAG, "Connected to $hostName:$port")
+                writeInfo(tag, "Connected to $hostName:$port")
                 clientFactory.createClient(selector, socket)
                 val client = key.attachment() as T
                 _selectionAcceptFlow.tryEmit(client)
             }
         } catch (e: Exception) {
             writeError(
-                TAG,
+                tag,
                 "Unable to connect to server $hostName:$port. Try again in ${
                     TimeUnit.MILLISECONDS.toSeconds(clientReconnectDelay)
                 } second"
@@ -190,7 +189,7 @@ class SelectorThread<T : SockClient>(
                 }
             }
         } catch (e: Exception) {
-            writeError(TAG, "Cannot read packets", e)
+            writeError(tag, "Cannot read packets", e)
             closeConnection(client, connection)
         }
     }
@@ -208,13 +207,13 @@ class SelectorThread<T : SockClient>(
                 closeConnection(client, connection)
             }
         } catch (e: Exception) {
-            writeError(TAG, "Cannot write packets", e)
+            writeError(tag, "Cannot write packets", e)
             closeConnection(client, connection)
         }
     }
 
     private fun closeConnection(client: T, connection: SockConnection) {
-        writeInfo(TAG, " Close connection with client $client")
+        writeInfo(tag, " Close connection with client $client")
         connection.closeSocket()
         _selectionCloseFlow.tryEmit(client)
 
@@ -225,6 +224,6 @@ class SelectorThread<T : SockClient>(
 
     private fun finalize() {
         isRunning = false
-        writeInfo(TAG, "Selector finished")
+        writeInfo(tag, "Selector finished")
     }
 }
